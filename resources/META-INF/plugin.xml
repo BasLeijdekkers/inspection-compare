@@ -5,11 +5,12 @@
   <vendor email="xelexerx@gmail.com" url="">Alexey Kozyakov</vendor>
 
   <description><![CDATA[
-      <em>Compare your offline inspection results</em>
+      Compare your offline XML inspection results using the <em>Filter/Diff inspection Results...</em> action in the
+      <em>Analyze</em> menu.
     ]]></description>
 
   <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/build_number_ranges.html for description -->
-  <idea-version since-build="191.0"/>
+  <idea-version since-build="183"/>
 
   <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
        on how to target different products -->
