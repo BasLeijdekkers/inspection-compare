@@ -3,6 +3,7 @@ package com.intellij.plugins.inspectioncompare.gui;
 import com.intellij.codeEditor.printing.ExportToHTMLSettings;
 import com.intellij.openapi.editor.event.DocumentListener;
 import com.intellij.openapi.fileTypes.PlainTextLanguage;
+import com.intellij.openapi.util.text.StringUtil;
 import com.intellij.plugins.inspectioncompare.diff.XmlDiff;
 import com.intellij.plugins.inspectioncompare.diff.XmlDiffResult;
 import com.intellij.plugins.inspectioncompare.util.FileChecker;
@@ -86,6 +87,10 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
     private Path addedDir;
     private Path removedDir;
     private final String lastDir;
+
+    private boolean autoChange = false;
+    private boolean addedWarningsEdited = false;
+    private boolean removedWarningsEdited = false;
 
     public FilterDiffPanel(Project project) {
         this.project = project;
@@ -221,8 +226,17 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
             parent = updatedPath.getParent();
         }
         if (parent != null) {
-            addedWarnings.setText(parent.resolve("from_" + baseFilename + "_to_" + updatedFilename).toString());
-            removedWarnings.setText(parent.resolve("from_" + updatedFilename + "_to_" + baseFilename).toString());
+            autoChange = true;
+            try {
+                if (!addedWarningsEdited) {
+                    addedWarnings.setText(parent.resolve("from_" + baseFilename + "_to_" + updatedFilename).toString());
+                }
+                if (!removedWarningsEdited) {
+                    removedWarnings.setText(parent.resolve("from_" + updatedFilename + "_to_" + baseFilename).toString());
+                }
+            } finally {
+                autoChange = false;
+            }
         }
     }
 
@@ -381,6 +395,8 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.replaceTo", replaceTo.getText());
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.filterCheckbox", filterCheckbox.isSelected());
         PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.normalizeCheckbox", normalizeCheckBox.isSelected());
+        if (addedWarningsEdited) PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.addedWarnings", addedWarnings.getText());
+        if (removedWarningsEdited) PropertiesComponent.getInstance().setValue("Inspection.Compare.Plugin.removedWarnings", removedWarnings.getText());
         filter.addTextAndSave();
         replaceFrom.addTextAndSave();
         replaceTo.addTextAndSave();
@@ -397,6 +413,16 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         }
         if (!replaceFrom.getText().isEmpty() || !replaceTo.getText().isEmpty()) {
             normalizeCheckBox.setSelected(Boolean.valueOf(PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.normalizeCheckbox")));
+        }
+        final String addedWarningsText = PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.addedWarnings");
+        if (!StringUtil.isEmpty(addedWarningsText)) {
+            addedWarnings.setText(addedWarningsText);
+            addedWarningsEdited = true;
+        }
+        final String removedWarningsText = PropertiesComponent.getInstance().getValue("Inspection.Compare.Plugin.removedWarnings");
+        if (!StringUtil.isEmpty(removedWarningsText)) {
+            removedWarnings.setText(removedWarningsText);
+            removedWarningsEdited = true;
         }
     }
 
@@ -639,7 +665,11 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         addedWarnings.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
             @Override
             protected void textChanged(DocumentEvent e) {
-                if (!getAddedWarningsAsStr().isEmpty()) {
+                final boolean notEmpty = !getAddedWarningsAsStr().isEmpty();
+                if (!autoChange) {
+                    addedWarningsEdited = notEmpty;
+                }
+                if (notEmpty) {
                     addedDir = getPathIfValid(getAddedWarningsAsStr());
                 }
             }
@@ -647,7 +677,11 @@ public class FilterDiffPanel extends JBPanel implements DialogTab, Disposable {
         removedWarnings.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
             @Override
             protected void textChanged(DocumentEvent e) {
-                if (!getRemovedWarningsAsStr().isEmpty()) {
+                final boolean notEmpty = !getRemovedWarningsAsStr().isEmpty();
+                if (!autoChange) {
+                    removedWarningsEdited = notEmpty;
+                }
+                if (notEmpty) {
                     removedDir = getPathIfValid(getRemovedWarningsAsStr());
                 }
             }
